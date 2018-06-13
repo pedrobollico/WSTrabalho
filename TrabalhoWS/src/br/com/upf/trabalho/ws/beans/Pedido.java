@@ -31,6 +31,10 @@ public class Pedido {
 	}
 	public void setDataVenda(Date dataVenda) {
 		this.dataVenda = dataVenda;
+
+		//SimpleDateFormat fmt = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+		//String data = fmt.format(dataVenda);
+		//this.dataVenda = fmt.parse(data);
 	}
 	public StatusPedido getStatusAtualPedido() {
 		return statusAtualPedido;
