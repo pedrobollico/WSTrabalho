@@ -1,7 +1,5 @@
 package br.com.upf.trabalho.ws.view.service;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -23,6 +21,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import br.com.upf.trabalho.ws.beans.Pedido;
+import br.com.upf.trabalho.ws.dateUtils.FormateDate;
 import br.com.upf.trabalho.ws.enumPedido.LojaPedido;
 import br.com.upf.trabalho.ws.enumPedido.StatusPedido;
 
@@ -31,8 +30,6 @@ public class PedidoResource {
 	
 	public static List<Pedido> pedidos;//banco de dados fake
 	public static HashMap<Long, Pedido> hashPedidos;
-	
-	
 	
 	static {
 		pedidos = new ArrayList<>();
@@ -116,7 +113,8 @@ public class PedidoResource {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	public String getPedidos(){
-		return new Gson().toJson(pedidos);
+		Gson gson=  new GsonBuilder().setDateFormat("dd/MM/yyyy HH:mm:ss").create();
+		return gson.toJson(pedidos);
 	}
 	
 	@GET
@@ -124,8 +122,8 @@ public class PedidoResource {
 	@Path("pedidosBylojaEstatus/status/{statusAtualPedido}/loja/{loja}")
 	public String getPedidoByLojaeStatus(@PathParam("statusAtualPedido") String status, @PathParam("loja") String loja){
 		//http://localhost:8081/TrabalhoWS/api/v1/PedidoResource/pedidosBylojaEstatus/status/PE/loja/AR
+		Gson json=  new GsonBuilder().setDateFormat("dd/MM/yyyy HH:mm:ss").create();
 		
-		Gson json = new Gson();
 	
 		List<Pedido> ordersbyLeS = new ArrayList<>();
 
@@ -148,7 +146,7 @@ public class PedidoResource {
 	@Path("coupons/clienteId/{id}")
 	public String getCouponbyCliente(@PathParam("id") Long id){
 		
-		Gson json = new Gson();
+		Gson json=  new GsonBuilder().setDateFormat("dd/MM/yyyy HH:mm:ss").create();
 	
 		List<String> coupons = new ArrayList<>();
 
@@ -169,20 +167,19 @@ public class PedidoResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes
 	@Path("pedidos")
-	public String valortoTaldePedidos(String jsonPedido){
+	public String valorTotalPedidos(String jsonPedido){
 		
-		Gson gson=  new GsonBuilder().setDateFormat("dd/MM/yyyy HH:mm:ss").create();
+		FormateDate formata = new FormateDate();
+		Gson gson=  new GsonBuilder().setDateFormat("dd/MM/yyyy").create();
 
 		Pedido pedidode = gson.fromJson(jsonPedido, Pedido.class);
-		System.out.println("TA vindo " + pedidode.getLoja() +" data " + pedidode.getDataVenda());
+		
 		List<Pedido> orders = new ArrayList<>();
 
 		for( Pedido ped: pedidos){
-			//Date dataformatada = parseDate(pedidode.getDataVenda().toString());
-			System.out.println("data no for " + pedidode.getDataVenda());
-			System.out.println("VERDADEIRO EQUALS LOJA" + ped.getLoja().equals(pedidode.getLoja()));
-			System.out.println("VERDADEIRO EQUALS Data" + ped.getDataVenda().equals(pedidode.getDataVenda()));
-			if(ped.getLoja().equals(pedidode.getLoja()) && ped.getDataVenda().equals(pedidode.getDataVenda())){
+			Date dataformatada = formata.pareseData(ped.getDataVenda());
+			if(ped.getLoja().equals(pedidode.getLoja()) && dataformatada.equals(pedidode.getDataVenda()) 
+					&& ped.getStatusAtualPedido().equals(pedidode.getStatusAtualPedido())){
 				orders.add(ped);
 	
 			}
@@ -190,9 +187,35 @@ public class PedidoResource {
 		if(orders.size() > 0){
 			return gson.toJson(orders);
 		}else{
-			return gson.toJson("Nenhum pedido para a data e loja informados ");
+			return gson.toJson("Nenhum pedido para a data, status e loja informados ");
 	}
 	}
+	
+	@POST
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes
+	@Path("valorTotalGastoPorcliente")
+	public String valorTotalGastoPorcliente(String jsonPedido){
+		
+		Gson json = new Gson();
+		
+		Pedido pedidocl = json.fromJson(jsonPedido, Pedido.class);
+
+		double valortotal = 0;
+		String clientecompra = null;
+		for( Pedido ped: pedidos){
+			if(ped.getCliente().getId().equals(pedidocl.getCliente().getId())){
+				valortotal += ped.getTotalPedido(); 
+				clientecompra = ped.getCliente().getNome().concat(" "+ped.getCliente().getSobrenome());
+			}
+		}
+		if(valortotal > 0){
+			return json.toJson("Cliente: " + clientecompra +" gastou o valor total de "+ valortotal+"R$");
+		}else{
+			return json.toJson("Cliente não realizou nem uma compra! ");
+	}
+	}
+	
 	
 	
 	@GET
@@ -200,7 +223,7 @@ public class PedidoResource {
 	@Path("couponPedidos/{coupon}")
 	public String getPedidosbyId(@PathParam("coupon") String coupon){
 		
-		Gson json = new Gson();
+		Gson json=  new GsonBuilder().setDateFormat("dd/MM/yyyy HH:mm:ss").create();
 		List<Pedido> orders = new ArrayList<>();
 		
 		for( Pedido ped: pedidos){
@@ -250,7 +273,10 @@ public class PedidoResource {
 	public Response alteraProduto(String pedJson){
 		Status status = null;	
 		String msg = null;
-		Pedido pedido = new Gson().fromJson(pedJson, Pedido.class);
+		
+		Gson json=  new GsonBuilder().setDateFormat("dd/MM/yyyy HH:mm:ss").create();
+		
+		Pedido pedido = json.fromJson(pedJson, Pedido.class);
 
 		try {
 			if(pedido.getId() == 0){
@@ -316,14 +342,5 @@ public class PedidoResource {
 				.build();
 	}
 	
-
-	private Date parseDate(String date) {
-		try {
-			return new SimpleDateFormat("dd/MM/yyyy").parse(date);
-		} catch (ParseException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
 	
 }
